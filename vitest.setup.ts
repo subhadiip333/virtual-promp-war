@@ -22,6 +22,14 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
+// Mock framer-motion to avoid act() warnings
+vi.mock('framer-motion', () => ({
+  motion: {
+    div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => <div { ...props } > { children } </div>,
+  },
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{ children } </>,
+}));
+
 // Mock SpeechRecognition
 class MockSpeechRecognition {
   start = vi.fn();
@@ -47,7 +55,7 @@ window.SpeechSynthesisUtterance = vi.fn().mockImplementation((text) => ({ text }
 
 // Mock navigator.geolocation
 const mockGeolocation = {
-  getCurrentPosition: vi.fn().mockImplementation((success) => 
+  getCurrentPosition: vi.fn().mockImplementation((success) =>
     Promise.resolve(success({
       coords: {
         latitude: 28.6139,

@@ -46,3 +46,5 @@ body.high-contrast .bg-primary-100 {
 .glass-panel {
   @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl rounded-2xl;
 }
+
+

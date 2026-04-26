@@ -1,8 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import EligibilityPage from '../pages/EligibilityPage';
-import QuizPage from '../pages/QuizPage';
 import ReminderPage from '../pages/ReminderPage';
 import VoterJourneyPage from '../pages/VoterJourneyPage';
 
