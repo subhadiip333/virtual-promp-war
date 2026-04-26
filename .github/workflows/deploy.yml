@@ -6,9 +6,9 @@ on:
       - main
 
 env:
-  PROJECT_ID: YOUR_PROJECT_ID
+  PROJECT_ID: virtual-promp-war
   REGION: us-central1
-  REPOSITORY: YOUR_REPOSITORY_NAME
+  REPOSITORY: virtual-promp-war
   SERVICE_NAME: matadata-service
   IMAGE_NAME: matadata-app
 
