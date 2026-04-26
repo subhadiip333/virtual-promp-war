@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Confetti from 'react-confetti';
-import { Award, Trophy, ChevronRight, FileSpreadsheet } from 'lucide-react';
+import { Award, Trophy, ChevronRight, FileSpreadsheet, Share2 } from 'lucide-react';
 import { sheetsService } from '../services/sheetsService';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Doughnut } from 'react-chartjs-2';
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 const MOCK_QUESTIONS = [
   { q: "What is the minimum voting age in India?", options: ["16", "18", "21", "25"], answer: 1 },
@@ -22,6 +26,14 @@ export default function QuizPage() {
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
+  const [eligibilityScore, setEligibilityScore] = useState(0);
+
+  useEffect(() => {
+    const savedElig = localStorage.getItem('eligibilityScore');
+    if (savedElig) {
+      setEligibilityScore(parseInt(savedElig, 10));
+    }
+  }, []);
 
   const handleAnswer = (index: number) => {
     if (index === MOCK_QUESTIONS[currentQ].answer) {
@@ -49,24 +61,75 @@ export default function QuizPage() {
 
   const percentage = (score / MOCK_QUESTIONS.length) * 100;
   const passed = percentage >= 80;
+  
+  // Total Readiness Score (50 from eligibility + 50 from quiz)
+  const quizPoints = (score / MOCK_QUESTIONS.length) * 50;
+  const totalReadinessScore = Math.round(eligibilityScore + quizPoints);
+
+  const chartData = {
+    labels: ['Readiness', 'Remaining'],
+    datasets: [
+      {
+        data: [totalReadinessScore, 100 - totalReadinessScore],
+        backgroundColor: ['#22c55e', '#e5e7eb'],
+        borderWidth: 0,
+        circumference: 360,
+        rotation: 270,
+      },
+    ],
+  };
+
+  const shareScore = () => {
+    const text = encodeURIComponent(`I just scored ${totalReadinessScore}/100 on my Voter Readiness test at MataData! Check your eligibility and test your knowledge now! 🗳️🇮🇳`);
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  };
 
   if (isFinished) {
     return (
-      <div className="max-w-3xl mx-auto space-y-8">
+      <div className="max-w-4xl mx-auto space-y-8">
         {passed && <Confetti recycle={false} numberOfPieces={300} />}
         
         <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold text-brand-dark">Quiz Completed!</h1>
-          <p className="text-xl text-gray-600">You scored {score} out of {MOCK_QUESTIONS.length} ({percentage}%)</p>
+          <h1 className="text-4xl font-bold text-brand-dark" tabIndex={0}>Quiz Completed!</h1>
+          <p className="text-xl text-gray-600">You scored {score} out of {MOCK_QUESTIONS.length} ({percentage}%) on the knowledge check.</p>
+        </div>
+
+        {/* Voter Readiness Score Section */}
+        <div className="glass-panel p-8 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="w-full md:w-1/2 space-y-4">
+            <h2 className="text-2xl font-bold text-brand-dark" tabIndex={0}>Your Voter Readiness Score</h2>
+            <p className="text-gray-600">
+              This score combines your basic Eligibility criteria (50%) and your Electoral Knowledge from the quiz (50%).
+            </p>
+            {eligibilityScore === 0 && (
+              <p className="text-red-500 text-sm font-bold bg-red-50 p-2 rounded">
+                Note: You scored 0 on eligibility. Please ensure you are an 18+ Indian resident.
+              </p>
+            )}
+            <button 
+              onClick={shareScore}
+              className="mt-4 bg-[#25D366] hover:bg-[#20bd5a] text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors"
+              aria-label="Share score on WhatsApp"
+            >
+              <Share2 className="w-5 h-5" aria-hidden="true" /> Share Score
+            </button>
+          </div>
+          <div className="w-48 h-48 relative">
+            <Doughnut data={chartData} options={{ cutout: '75%', plugins: { tooltip: { enabled: false }, legend: { display: false } } }} />
+            <div className="absolute inset-0 flex items-center justify-center flex-col">
+              <span className="text-4xl font-extrabold text-brand-dark">{totalReadinessScore}</span>
+              <span className="text-sm text-gray-500 font-medium">/ 100</span>
+            </div>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* Certificate */}
           {passed ? (
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel p-8 border-4 border-yellow-400 bg-gradient-to-br from-yellow-50 to-white text-center flex flex-col items-center space-y-4">
-              <Award className="w-20 h-20 text-yellow-500" />
+              <Award className="w-20 h-20 text-yellow-500" aria-hidden="true" />
               <div>
-                <h2 className="text-2xl font-serif font-bold text-gray-800">Certificate of Civic Excellence</h2>
+                <h2 className="text-2xl font-serif font-bold text-gray-800" tabIndex={0}>Certificate of Civic Excellence</h2>
                 <p className="text-gray-600 mt-2">Awarded for demonstrating outstanding knowledge of the Indian electoral process.</p>
               </div>
               <div className="w-full border-b-2 border-gray-300 mt-8 mb-2"></div>
@@ -75,14 +138,20 @@ export default function QuizPage() {
           ) : (
             <div className="glass-panel p-8 text-center flex flex-col items-center justify-center space-y-4 bg-gray-50">
               <p className="text-lg text-gray-600">Score 80% or higher to unlock the Civic Excellence Certificate!</p>
-              <button onClick={() => { setCurrentQ(0); setScore(0); setIsFinished(false); }} className="text-primary-600 font-medium hover:underline">Try Again</button>
+              <button 
+                onClick={() => { setCurrentQ(0); setScore(0); setIsFinished(false); }} 
+                className="text-primary-600 font-medium hover:underline p-2"
+                aria-label="Try the quiz again"
+              >
+                Try Again
+              </button>
             </div>
           )}
 
           {/* Leaderboard */}
           <div className="glass-panel p-6">
-            <h3 className="text-xl font-bold flex items-center gap-2 mb-4">
-              <Trophy className="text-yellow-500 w-5 h-5" /> Top Scholars
+            <h3 className="text-xl font-bold flex items-center gap-2 mb-4" tabIndex={0}>
+              <Trophy className="text-yellow-500 w-5 h-5" aria-hidden="true" /> Top Scholars
             </h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border">
@@ -99,8 +168,8 @@ export default function QuizPage() {
               </div>
             </div>
             
-            <div className="mt-4 flex items-center gap-2 text-xs text-gray-500 bg-gray-100 p-2 rounded">
-              <FileSpreadsheet className="w-4 h-4" />
+            <div className="mt-4 flex items-center gap-2 text-xs text-gray-500 bg-gray-100 p-2 rounded" aria-live="polite">
+              <FileSpreadsheet className="w-4 h-4" aria-hidden="true" />
               {isLogging ? "Logging score to Google Sheets..." : "Score safely synced to Google Sheets!"}
             </div>
           </div>
@@ -112,14 +181,14 @@ export default function QuizPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-brand-dark">Election Quiz</h1>
-        <div className="text-primary-600 font-bold bg-primary-50 px-4 py-2 rounded-full">
+        <h1 className="text-3xl font-bold text-brand-dark" tabIndex={0}>Election Quiz</h1>
+        <div className="text-primary-600 font-bold bg-primary-50 px-4 py-2 rounded-full" aria-live="polite">
           Question {currentQ + 1} / {MOCK_QUESTIONS.length}
         </div>
       </div>
 
       <div className="glass-panel p-8 space-y-8 min-h-[350px]">
-        <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+        <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden" aria-hidden="true">
           <div 
             className="bg-primary-500 h-full transition-all duration-300"
             style={{ width: `${((currentQ) / MOCK_QUESTIONS.length) * 100}%` }}
@@ -132,17 +201,18 @@ export default function QuizPage() {
           animate={{ opacity: 1, x: 0 }}
           className="space-y-6"
         >
-          <h2 className="text-xl font-semibold text-gray-800">{MOCK_QUESTIONS[currentQ].q}</h2>
+          <h2 className="text-xl font-semibold text-gray-800" tabIndex={0}>{MOCK_QUESTIONS[currentQ].q}</h2>
           
-          <div className="space-y-3">
+          <div className="space-y-3" role="radiogroup" aria-label="Quiz options">
             {MOCK_QUESTIONS[currentQ].options.map((opt, i) => (
               <button
                 key={i}
                 onClick={() => handleAnswer(i)}
                 className="w-full text-left p-4 rounded-xl border-2 border-gray-100 bg-white hover:border-primary-500 hover:bg-primary-50 transition-colors flex justify-between items-center group font-medium"
+                aria-label={`Select option: ${opt}`}
               >
                 {opt}
-                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-primary-500" />
+                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-primary-500" aria-hidden="true" />
               </button>
             ))}
           </div>

@@ -18,8 +18,10 @@ export default function EligibilityPage() {
   const checkEligibility = () => {
     if (parseInt(formData.age) >= 18 && formData.citizen === 'yes' && formData.resident === 'yes') {
       setIsPassed(true);
+      localStorage.setItem('eligibilityScore', '50');
     } else {
       setIsPassed(false);
+      localStorage.setItem('eligibilityScore', '0');
     }
     setStep(4);
   };

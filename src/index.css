@@ -4,8 +4,43 @@
 
 @layer base {
   body {
-    @apply bg-brand-light text-brand-dark antialiased;
+    @apply bg-brand-light text-brand-dark antialiased transition-colors duration-200;
   }
+}
+
+/* Accessibility: Font Sizes */
+body.text-normal { font-size: 16px; }
+body.text-large { font-size: 20px; }
+body.text-x-large { font-size: 24px; }
+
+/* Accessibility: High Contrast overrides */
+body.high-contrast {
+  @apply bg-black text-white;
+}
+
+body.high-contrast .glass-panel {
+  @apply bg-black border-2 border-white shadow-none text-white;
+}
+
+body.high-contrast header {
+  @apply bg-black border-b-2 border-white;
+}
+
+body.high-contrast button {
+  @apply border border-white;
+}
+
+body.high-contrast .text-gray-500,
+body.high-contrast .text-gray-600,
+body.high-contrast .text-gray-700 {
+  @apply text-gray-100;
+}
+
+body.high-contrast .text-primary-600,
+body.high-contrast .text-primary-500,
+body.high-contrast .bg-primary-50,
+body.high-contrast .bg-primary-100 {
+  @apply text-[#ffeb3b] bg-black border-white;
 }
 
 .glass-panel {

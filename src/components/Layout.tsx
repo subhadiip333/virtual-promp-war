@@ -1,10 +1,12 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Vote, Menu, X } from 'lucide-react';
+import { Vote, Menu, X, SunMoon, Type } from 'lucide-react';
 import { useState } from 'react';
+import { useAccessibility } from '../contexts/AccessibilityContext';
 
 export default function Layout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const { highContrast, setHighContrast, fontSize, setFontSize } = useAccessibility();
 
   const navLinks = [
     { name: 'Home', path: '/' },
@@ -16,24 +18,35 @@ export default function Layout() {
     { name: 'Reminders', path: '/reminders' },
   ];
 
+  const toggleFontSize = () => {
+    if (fontSize === 'normal') setFontSize('large');
+    else if (fontSize === 'large') setFontSize('x-large');
+    else setFontSize('normal');
+  };
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col relative">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary-600 text-white p-4 z-[100] rounded-lg shadow-xl font-bold">
+        Skip to Content
+      </a>
+
       <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <Link to="/" className="flex items-center gap-2">
-                <Vote className="h-8 w-8 text-primary-600" />
+              <Link to="/" className="flex items-center gap-2" aria-label="MataData Home">
+                <Vote className="h-8 w-8 text-primary-600" aria-hidden="true" />
                 <span className="font-bold text-xl tracking-tight text-brand-dark">MataData</span>
               </Link>
             </div>
             
             {/* Desktop Nav */}
-            <nav className="hidden md:flex space-x-8 items-center">
+            <nav className="hidden md:flex space-x-6 items-center" aria-label="Main Navigation">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
+                  aria-current={location.pathname === link.path ? 'page' : undefined}
                   className={`text-sm font-medium transition-colors hover:text-primary-600 ${
                     location.pathname === link.path ? 'text-primary-600 border-b-2 border-primary-600' : 'text-gray-600'
                   }`}
@@ -41,15 +54,44 @@ export default function Layout() {
                   {link.name}
                 </Link>
               ))}
+              
+              <div className="h-6 w-px bg-gray-300 mx-2" aria-hidden="true"></div>
+              
+              <button 
+                onClick={() => setHighContrast(!highContrast)}
+                className="p-2 text-gray-600 hover:text-primary-600 rounded-full hover:bg-gray-100 transition-colors"
+                aria-label={highContrast ? "Disable High Contrast" : "Enable High Contrast"}
+                title="Toggle High Contrast"
+              >
+                <SunMoon className="w-5 h-5" aria-hidden="true" />
+              </button>
+              
+              <button 
+                onClick={toggleFontSize}
+                className="p-2 text-gray-600 hover:text-primary-600 rounded-full hover:bg-gray-100 transition-colors"
+                aria-label={`Change Font Size (Current: ${fontSize})`}
+                title="Toggle Font Size"
+              >
+                <Type className="w-5 h-5" aria-hidden="true" />
+              </button>
             </nav>
 
             {/* Mobile menu button */}
-            <div className="flex items-center md:hidden">
+            <div className="flex items-center md:hidden gap-2">
+              <button 
+                onClick={() => setHighContrast(!highContrast)}
+                className="p-2 text-gray-600"
+                aria-label="Toggle High Contrast"
+              >
+                <SunMoon className="w-5 h-5" aria-hidden="true" />
+              </button>
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="text-gray-600 hover:text-gray-900 focus:outline-none"
+                className="text-gray-600 hover:text-gray-900 focus:outline-none p-2"
+                aria-expanded={isMenuOpen}
+                aria-label="Main menu"
               >
-                {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                {isMenuOpen ? <X className="h-6 w-6" aria-hidden="true" /> : <Menu className="h-6 w-6" aria-hidden="true" />}
               </button>
             </div>
           </div>
@@ -58,12 +100,13 @@ export default function Layout() {
         {/* Mobile Nav */}
         {isMenuOpen && (
           <div className="md:hidden bg-white border-b border-gray-200">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+            <nav className="px-2 pt-2 pb-3 space-y-1 sm:px-3" aria-label="Mobile Navigation">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
                   onClick={() => setIsMenuOpen(false)}
+                  aria-current={location.pathname === link.path ? 'page' : undefined}
                   className={`block px-3 py-2 rounded-md text-base font-medium ${
                     location.pathname === link.path ? 'bg-primary-50 text-primary-700' : 'text-gray-700 hover:bg-gray-50'
                   }`}
@@ -71,12 +114,18 @@ export default function Layout() {
                   {link.name}
                 </Link>
               ))}
-            </div>
+              <button 
+                onClick={toggleFontSize}
+                className="w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-md font-medium"
+              >
+                Toggle Font Size ({fontSize})
+              </button>
+            </nav>
           </div>
         )}
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+      <main id="main-content" className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full outline-none" tabIndex={-1}>
         <Outlet />
       </main>
 
