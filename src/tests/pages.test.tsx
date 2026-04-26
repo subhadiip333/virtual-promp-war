@@ -23,7 +23,7 @@ describe('Page Component Tests', () => {
     it.each(ageInputs)('should handle age input %s and allow next', async (age) => {
       renderWithRouter(<EligibilityPage />);
       const input = screen.getByPlaceholderText('Enter your age');
-      const nextBtn = screen.getByText('Next');
+      const nextBtn = screen.getByText('Next →');
 
       expect(nextBtn).toBeDisabled();
       fireEvent.change(input, { target: { value: age.toString() } });
@@ -39,13 +39,13 @@ describe('Page Component Tests', () => {
       renderWithRouter(<EligibilityPage />);
 
       fireEvent.change(screen.getByPlaceholderText('Enter your age'), { target: { value: '17' } });
-      fireEvent.click(screen.getByText('Next'));
+      fireEvent.click(screen.getByText('Next →'));
 
       await waitFor(() => screen.getByText('2. Are you an Indian citizen?'));
-      fireEvent.click(screen.getByText('Yes', { selector: 'button' }));
+      fireEvent.click(screen.getByRole('button', { name: /yes/i }));
 
       await waitFor(() => screen.getByText('3. Are you an ordinary resident of your polling area?'));
-      fireEvent.click(screen.getByText('Yes', { selector: 'button' }));
+      fireEvent.click(screen.getByRole('button', { name: /yes/i }));
 
       await waitFor(() => {
         expect(screen.getByText('Not Eligible Yet')).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe('Page Component Tests', () => {
 
       const ageInput = screen.getByPlaceholderText('Enter your age');
       fireEvent.change(ageInput, { target: { value: '25' } });
-      fireEvent.click(screen.getByText('Next'));
+      fireEvent.click(screen.getByText('Next →'));
 
       await new Promise(r => setTimeout(r, 500));
       screen.debug();
@@ -91,7 +91,7 @@ describe('Page Component Tests', () => {
     it('should render the countdown', () => {
       renderWithRouter(<ReminderPage />);
       expect(screen.getByText('Election Countdown')).toBeInTheDocument();
-      expect(screen.getByText('Days')).toBeInTheDocument();
+      expect(screen.getByText('days')).toBeInTheDocument();
     });
 
     it('should handle calendar addition', async () => {
@@ -100,7 +100,7 @@ describe('Page Component Tests', () => {
       fireEvent.click(btn);
       // Wait for mock
       await waitFor(() => {
-        expect(screen.getByText('Added to Calendar')).toBeInTheDocument();
+        expect(screen.getByText('Added')).toBeInTheDocument();
       });
     });
   });

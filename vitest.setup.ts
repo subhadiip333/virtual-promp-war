@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
+import React from 'react';
 
 // Mock Canvas (Required for Chart.js and Confetti)
 HTMLCanvasElement.prototype.getContext = () => null as any;
@@ -22,12 +23,17 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
-// Mock framer-motion to avoid act() warnings
 vi.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => <div { ...props } > { children } </div>,
+    div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) =>
+      React.createElement('div', props, children),
+    span: ({ children, ...props }: React.HTMLAttributes<HTMLSpanElement>) =>
+      React.createElement('span', props, children),
+    p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) =>
+      React.createElement('p', props, children),
   },
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{ children } </>,
+  AnimatePresence: ({ children }: { children: React.ReactNode }) =>
+    React.createElement(React.Fragment, null, children),
 }));
 
 // Mock SpeechRecognition
