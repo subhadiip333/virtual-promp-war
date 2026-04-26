@@ -23,7 +23,7 @@ describe('Accessibility & Layout Tests', () => {
     { name: 'MataData Home', role: 'link' },
     { name: 'Main Navigation', role: 'navigation' }
   ];
-  
+
   it.each(a11yRoles)('should have accessible role %s', (item) => {
     render(
       <AccessibilityProvider>
@@ -43,7 +43,8 @@ describe('Accessibility & Layout Tests', () => {
         </BrowserRouter>
       </AccessibilityProvider>
     );
-    const hcBtn = screen.getByRole('button', { name: /High Contrast/i });
+    const hcBtns = screen.getAllByRole('button', { name: /High Contrast/i });
+    const hcBtn = hcBtns[0];
     fireEvent.click(hcBtn);
     expect(document.body.classList.contains('high-contrast')).toBe(true);
   });
