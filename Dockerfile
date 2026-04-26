@@ -1,7 +1,12 @@
-# Stage 1: Build (only used if building locally with docker build)
-# In CI, dist/ is already built before docker build runs
+# Stage 1: Build
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Declare build arg
+ARG VITE_GOOGLE_MAPS_API_KEY
+# Make it available to Vite during build
+ENV VITE_GOOGLE_MAPS_API_KEY=$VITE_GOOGLE_MAPS_API_KEY
+
 COPY package*.json ./
 RUN npm ci
 COPY . .

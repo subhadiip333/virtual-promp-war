@@ -81,7 +81,6 @@ export default function BoothLocatorPage() {
   const lat = selected?.location.lat ?? userLoc?.lat ?? 28.6139;
   const lng = selected?.location.lng ?? userLoc?.lng ?? 77.209;
   const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-  console.log("KeyLL: " + MAPS_API_KEY);
   const mapSrc = selected
     ? `https://www.google.com/maps/embed/v1/place?key=${MAPS_API_KEY}&q=${encodeURIComponent(selected.name + ', ' + selected.address)}&zoom=16`
     : `https://www.google.com/maps/embed/v1/view?key=${MAPS_API_KEY}&center=${lat},${lng}&zoom=13&maptype=roadmap`;
