@@ -59,9 +59,6 @@ jobs:
       - name: Clean build cache
         run: rm -rf node_modules/.tmp
 
-      - name: Build Vite App
-        run: npm run build
-
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v2
@@ -77,9 +74,15 @@ jobs:
       - name: Build Docker Image
         run: |
           docker build \
+            --build-arg VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }} \
             -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:latest \
             .
+
+      - name: Debug secret length
+        run: echo "Key length = ${#VITE_GOOGLE_MAPS_API_KEY}"
+        env:
+          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
 
       - name: Push Docker Image to Artifact Registry
         run: |
