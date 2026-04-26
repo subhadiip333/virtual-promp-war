@@ -1,8 +1,10 @@
+// REMOVE this line at the top:
 /// <reference types="vitest" />
+
+// Keep everything else the same
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   build: {
@@ -22,5 +24,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
     css: false,
+    typecheck: {
+      tsconfig: './tsconfig.test.json',
+    },
   }
 })
