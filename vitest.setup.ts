@@ -2,8 +2,31 @@ import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 import React from 'react';
 
-// Mock Canvas (Required for Chart.js and Confetti)
-HTMLCanvasElement.prototype.getContext = () => null as any;
+// Mock Canvas (Required for Chart.js)
+HTMLCanvasElement.prototype.getContext = () => ({
+  clearRect: vi.fn(),
+  fillRect: vi.fn(),
+  beginPath: vi.fn(),
+  moveTo: vi.fn(),
+  lineTo: vi.fn(),
+  arc: vi.fn(),
+  fill: vi.fn(),
+  stroke: vi.fn(),
+  closePath: vi.fn(),
+  restore: vi.fn(),
+  save: vi.fn(),
+  translate: vi.fn(),
+  rotate: vi.fn(),
+  scale: vi.fn(),
+  setTransform: vi.fn(),
+  transform: vi.fn(),
+  resetTransform: vi.fn(),
+} as any);
+
+// Mock react-confetti
+vi.mock('react-confetti', () => ({
+  default: () => null,
+}));
 
 // Mock scrollIntoView
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -25,11 +48,11 @@ Object.defineProperty(window, 'matchMedia', {
 
 vi.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) =>
+    div: ({ children, whileHover, initial, animate, exit, transition, ...props }: any) =>
       React.createElement('div', props, children),
-    span: ({ children, ...props }: React.HTMLAttributes<HTMLSpanElement>) =>
+    span: ({ children, whileHover, initial, animate, exit, transition, ...props }: any) =>
       React.createElement('span', props, children),
-    p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) =>
+    p: ({ children, whileHover, initial, animate, exit, transition, ...props }: any) =>
       React.createElement('p', props, children),
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) =>

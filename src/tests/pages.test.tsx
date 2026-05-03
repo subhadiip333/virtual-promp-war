@@ -1,9 +1,15 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import EligibilityPage from '../pages/EligibilityPage';
 import ReminderPage from '../pages/ReminderPage';
 import VoterJourneyPage from '../pages/VoterJourneyPage';
+
+vi.mock('../services/calendarService', () => ({
+  calendarService: {
+    addElectionReminder: vi.fn().mockResolvedValue(true)
+  }
+}));
 
 // Wrapper for router dependencies
 const renderWithRouter = (ui: React.ReactElement) => {
@@ -53,14 +59,21 @@ describe('Page Component Tests', () => {
     });
 
     it('should calculate success if all criteria met', async () => {
-      render(<EligibilityPage />);
+      renderWithRouter(<EligibilityPage />);
 
       const ageInput = screen.getByPlaceholderText('Enter your age');
       fireEvent.change(ageInput, { target: { value: '25' } });
       fireEvent.click(screen.getByText('Next →'));
 
-      await new Promise(r => setTimeout(r, 500));
-      screen.debug();
+      await waitFor(() => screen.getByText('2. Are you an Indian citizen?'));
+      fireEvent.click(screen.getByRole('button', { name: /yes/i }));
+
+      await waitFor(() => screen.getByText('3. Are you an ordinary resident of your polling area?'));
+      fireEvent.click(screen.getByRole('button', { name: /yes/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/You are eligible!/i)).toBeInTheDocument();
+      });
     });
   });
 
@@ -96,7 +109,7 @@ describe('Page Component Tests', () => {
 
     it('should handle calendar addition', async () => {
       renderWithRouter(<ReminderPage />);
-      const btn = screen.getByText('Add Reminder');
+      const btn = screen.getByRole('button', { name: /add reminder/i });
       fireEvent.click(btn);
       // Wait for mock
       await waitFor(() => {

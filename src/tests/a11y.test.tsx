@@ -20,7 +20,7 @@ describe('Accessibility & Layout Tests', () => {
   });
 
   const a11yRoles = [
-    { name: 'MataData Home', role: 'link' },
+    { name: 'VotePath X Home', role: 'link' },
     { name: 'Main Navigation', role: 'navigation' }
   ];
 
