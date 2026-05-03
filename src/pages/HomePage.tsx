@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ShieldCheck, MapPin, BrainCircuit, Target, Bell, ArrowRight } from 'lucide-react';
+import { ShieldCheck, MapPin, BrainCircuit, Target, Bell, ArrowRight, ShieldAlert, Users, FlaskConical } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 
@@ -10,11 +10,14 @@ const languages = [
 ];
 
 const features = [
-  { icon: ShieldCheck,  title: "Eligibility Checker", desc: "Verify if you can vote with a quick 3-step check.",           path: "/eligibility", color: "text-green-600",  bg: "bg-green-100"  },
-  { icon: MapPin,       title: "Booth Locator",       desc: "Find your nearest polling booth with live Maps.",             path: "/booths",      color: "text-blue-600",   bg: "bg-blue-100"   },
-  { icon: BrainCircuit, title: "AI Coach",            desc: "Ask our Gemini-powered AI any election question.",            path: "/coach",       color: "text-purple-600", bg: "bg-purple-100" },
-  { icon: Target,       title: "Gamified Journey",    desc: "Track your progress from registration to casting your vote.", path: "/journey",     color: "text-orange-600", bg: "bg-orange-100" },
-  { icon: Bell,         title: "Smart Reminders",     desc: "Get Calendar & WhatsApp alerts for voting day.",             path: "/reminders",   color: "text-red-600",    bg: "bg-red-100"    },
+  { icon: ShieldCheck,  title: "Eligibility Checker",       desc: "Verify if you can vote with a quick 3-step check.",                  path: "/eligibility", color: "text-green-600",  bg: "bg-green-100",  badge: ""       },
+  { icon: MapPin,       title: "Booth Locator",             desc: "Find your nearest polling booth with live Google Maps.",             path: "/booths",      color: "text-blue-600",   bg: "bg-blue-100",   badge: ""       },
+  { icon: BrainCircuit, title: "AI Coach",                  desc: "Ask our Gemini 2.5-powered AI any election question, in any language.", path: "/coach",    color: "text-purple-600", bg: "bg-purple-100", badge: ""       },
+  { icon: Target,       title: "Voter Journey",             desc: "Track your gamified progress from registration to casting your vote.", path: "/journey",    color: "text-orange-600", bg: "bg-orange-100", badge: ""       },
+  { icon: Bell,         title: "Smart Reminders",           desc: "Get Calendar alerts for election day.",                              path: "/reminders",   color: "text-red-600",    bg: "bg-red-100",    badge: ""       },
+  { icon: ShieldAlert,  title: "Misinformation Detector",   desc: "AI fact-checks election claims against official ECI guidelines.",    path: "/misinfo",     color: "text-amber-600",  bg: "bg-amber-100",  badge: "NEW 🔥" },
+  { icon: Users,        title: "Candidate Comparison",      desc: "Get an unbiased AI-generated comparison of up to 4 candidates.",    path: "/compare",     color: "text-indigo-600", bg: "bg-indigo-100", badge: "NEW 🔥" },
+  { icon: FlaskConical, title: "Scenario Simulator",        desc: "Describe any 'what-if' voting situation and get an ECI ruling.",    path: "/simulator",   color: "text-violet-600", bg: "bg-violet-100", badge: "NEW 🔥" },
 ];
 
 export default function HomePage() {
@@ -74,9 +77,9 @@ export default function HomePage() {
         </select>
       </section>
 
-      {/* Features Grid — each card navigates on click */}
+      {/* Features Grid */}
       <section>
-        <h2 className="text-2xl font-bold text-center text-brand-dark mb-8">What can MataData do?</h2>
+        <h2 className="text-2xl font-bold text-center text-brand-dark mb-8">What can VotePath X do?</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {features.map((feature, i) => (
             <motion.div
@@ -89,9 +92,14 @@ export default function HomePage() {
             >
               <Link
                 to={feature.path}
-                className="glass-panel p-6 flex flex-col items-center text-center space-y-4 hover:shadow-2xl transition-all h-full group block"
+                className="glass-panel p-6 flex flex-col items-center text-center space-y-4 hover:shadow-2xl transition-all h-full group block relative"
                 aria-label={`Go to ${feature.title}`}
               >
+                {feature.badge && (
+                  <span className="absolute top-3 right-3 text-xs font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white px-2 py-0.5 rounded-full">
+                    {feature.badge}
+                  </span>
+                )}
                 <div className={`p-4 ${feature.bg} ${feature.color} rounded-full transition-transform group-hover:scale-110`}>
                   <feature.icon size={32} />
                 </div>
@@ -109,3 +117,4 @@ export default function HomePage() {
     </div>
   );
 }
+

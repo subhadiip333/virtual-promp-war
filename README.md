@@ -1,205 +1,127 @@
-# MataData 🗳️🇮🇳
-### India's Election Intelligence Platform
+# VotePath X (formerly MataData) 🗳️
 
-> "Mata" (मतदाता) means Voter in Hindi. Data means Knowledge. Together — empowering every Indian voter.
+An enterprise-grade, gamified, and accessible AI election intelligence platform designed to empower Indian voters with real-time, multi-lingual, and highly accurate election information.
 
-## Chosen Vertical
-**Election Education & Civic Engagement**
+## 🎯 Chosen Vertical
+**Civic Tech / GovTech (AI for Social Good)**
 
-India has 960M+ eligible voters, yet millions miss elections because the process feels confusing or inaccessible. MataData solves this with a gamified, AI-powered platform that guides every citizen through the complete election journey — from eligibility to casting their vote — in their own language, even offline.
+## 🚨 Problem Statement
+Navigating complex election data, verifying candidate profiles, and understanding local voting procedures is often a daunting task for the average voter. Information is fragmented across various portals, lacks accessibility (WCAG compliance), and is rarely available in localized languages or an interactive format. This friction leads to lower voter turnout and uninformed voting decisions.
 
----
+## 🏗️ Approach and Architecture
+VotePath X leverages a modern, scalable, and secure architecture:
+- **Monorepo Architecture:** Built using Turborepo to manage full-stack codebases efficiently.
+- **Frontend:** React + Vite, styled for WCAG 2.1 AAA accessibility and responsive design.
+- **Backend:** Node.js (v24.15.0) + Express, functioning as a secure API Gateway and Backend-for-Frontend (BFF).
+- **Database & Caching:** MongoDB for persistent user and election data, and Upstash Redis for high-speed query caching.
+- **AI & GCP Services:** Integration with Google's Gen AI SDK (Gemini) for natural language processing, Google Sheets for dynamic data ingestion, Google Maps for polling booth location, and Firebase for secure authentication.
 
+## ⚙️ How It Works
+1. **Interactive AI Assistant:** Voters can ask questions in natural language (e.g., "Who are the candidates in my constituency?").
+2. **Secure Proxy Layer:** The Node.js backend receives the request, checks the Upstash Redis cache, and if missing, orchestrates calls to Google Cloud APIs (Gemini, Maps, etc.) using securely managed Service Accounts.
+3. **Data Aggregation:** The backend fetches real-time data from MongoDB or Google Sheets, formats it, and returns the response to the user.
+4. **Gamification:** Users earn badges and track their "Voter IQ" through interactions, making civic engagement fun.
 
-## 8 Google Cloud Services — and Why Each Was Chosen
+## 🛠️ Setup Instructions
 
-| # | Service | Why It Was Chosen |
-|---|---------|-------------------|
-| 1 | **Gemini 1.5 Flash (Vertex AI)** | Powers the AI Election Coach chatbot. Flash was chosen over Pro for its faster response time and lower cost at scale — critical for rural users on slow connections. Handles complex multi-turn conversations about voting procedures. |
-| 2 | **Vertex AI text-embedding-004** | Enables semantic FAQ search via RAG (Retrieval-Augmented Generation). Instead of keyword matching, it understands *intent* — so "how do I register?" and "voter ID enrollment process" return the same answer. |
-| 3 | **Cloud Translation API v3** | Dynamically translates the entire UI into all **22 Indian Scheduled Languages** (including Bodo, Dogri, Maithili, Santali — languages competitors ignore). Chosen for its neural translation quality over simpler alternatives. |
-| 4 | **Google Maps JS + Places API** | Auto-geolocates users and shows the nearest 3 polling booths with distance, opening hours, and wheelchair accessibility data. The Places API enriches each result with real-world metadata. |
-| 5 | **Google Calendar API** | Syncs state-specific and general election dates directly to the user's Google Calendar with a single click. Uses geolocation to detect the user's state for accurate, localised reminders. |
-| 6 | **Cloud Natural Language API** | Analyses sentiment of user queries in real time. If confusion or frustration is detected, the AI Coach automatically shifts to a simpler, more empathetic tone. Also powers anonymous query analytics for civic insights. |
-| 7 | **Firebase Authentication** | Provides frictionless login via Email/Password and Google OAuth. Chosen for its seamless integration with the Google ecosystem and its ability to persist voter journey progress securely across sessions. |
-| 8 | **Google Sheets API** | Acts as a lightweight, serverless leaderboard database — logging quiz scores, calculating the Voter Readiness Score, and powering a live leaderboard. Zero infrastructure cost, zero database setup. |
+### Prerequisites
+- **Node.js**: v24.15.0+
+- **Package Manager**: npm or yarn
 
----
+### Installation
+1. Clone the repository.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Configure Environment Variables:
+   Create a `.env` file in the root directory and fill in the required keys. (See the `.env.example` file if available):
+   ```env
+   # Frontend & Google APIs
+   VITE_GOOGLE_MAPS_API_KEY=your_key
+   GOOGLE_CLOUD_PROJECT=your_project_id
+   GOOGLE_CLOUD_LOCATION=us-central1
+   GOOGLE_SHEETS_ID=your_sheet_id
+   GOOGLE_APPLICATION_CREDENTIALS="./service-account.json"
+   
+   # Backend Server Config
+   VITE_API_URL=http://localhost:8080 # For local development
+   PORT=8080
+   
+   # Database & Caching
+   MONGODB_URI=your_mongo_uri
+   UPSTASH_REDIS_REST_URL=your_redis_url
+   UPSTASH_REDIS_REST_TOKEN=your_redis_token
+   
+   # AI
+   GEMINI_API_KEY=your_gemini_key
+   
+   # Security
+   JWT_SECRET=your_jwt_secret
+   API_HMAC_SECRET=votepath-x-hmac-dev-secret-change-in-prod
+   ```
+   *Note: Ensure `service-account.json` is placed in the root directory if using Google Cloud Service Account authentication.*
 
-## System Architecture
+4. **Start the Development Servers:**
+   This project uses a dual-server setup for local development. You need to run both commands in separate terminal windows.
 
-```mermaid
-graph TD
-    subgraph UI["User Interface (React + TypeScript + Vite)"]
-        A[Home Page] --> B[Eligibility Checker]
-        A --> C[AI Coach - Gemini Flash]
-        A --> D[Voter Journey - 7 Steps]
-        A --> E[Quiz + Readiness Score]
-        A --> F[Booth Locator - Maps]
-        A --> G[Smart Reminders - Calendar]
-    end
+   **Terminal 1 (Backend API):**
+   ```bash
+   npm run server:dev
+   ```
+   
+   **Terminal 2 (Frontend UI):**
+   ```bash
+   npm run dev
+   ```
 
-    subgraph PWA["PWA Layer"]
-        SW[Service Worker]
-        SW --> CACHE[Offline Cache - FAQs + Maps + Quiz]
-    end
+## 🚀 Deployment Guide
 
-    subgraph GCP["Google Cloud Services"]
-        C -->|chat + RAG| GEMINI[Vertex AI Gemini 1.5 Flash]
-        C -->|semantic search| EMBED[Vertex AI Embeddings]
-        A -->|UI translation| TRANS[Cloud Translation API v3]
-        F -->|booth search| MAPS[Maps JS + Places API]
-        G -->|sync events| CAL[Google Calendar API]
-        C -->|sentiment analysis| NLP[Cloud Natural Language API]
-        AUTH[Firebase Auth] -->|login state| UI
-        E -->|score logging| SHEETS[Google Sheets API]
-    end
+Deploying VotePath X involves hosting the backend (Node.js/Express) and the frontend (Vite/React) separately.
 
-    subgraph DEPLOY["Deployment"]
-        DOCKER[Multi-stage Docker] --> NGINX[Nginx - gzip + caching]
-        NGINX --> CLOUDRUN[Google Cloud Run - port 8080]
-        GHACTIONS[GitHub Actions CI/CD] --> DOCKER
-    end
+### 🔑 Where to Keep API Keys in Production
+**NEVER commit your `.env` file to version control.**
+In production, your API keys and secrets should be securely injected via your hosting provider's environment variable/secrets manager:
+- **For the Backend (Google Cloud Run / Render / Heroku):** Add variables like `GEMINI_API_KEY`, `MONGODB_URI`, `UPSTASH_REDIS_REST_TOKEN`, `JWT_SECRET`, and `API_HMAC_SECRET` into the Cloud Run Environment Variables section.
+- **For the Frontend (Vercel / Netlify):** Add `VITE_GOOGLE_MAPS_API_KEY` and `VITE_API_URL` into the Vercel Project Settings > Environment Variables.
 
-    UI --> PWA
-    UI --> GCP
-    UI --> DEPLOY
-```
+### 🛑 What Needs to Change Before Production
+1. **API_HMAC_SECRET**: Change this value to a strong, randomly generated string in production environment variables. Both frontend and backend must share this exact same secret.
+2. **JWT_SECRET**: Use a secure, long random string.
+3. **VITE_API_URL**: Once your backend is deployed, update this in your frontend hosting (e.g., Vercel) to point to your live backend URL (e.g., `https://api.votepathx.com`) instead of `http://localhost:8080`.
+4. **Google Maps Restriction**: Restrict your Google Maps API key in the Google Cloud Console to only accept requests from your production frontend domain to prevent quota theft.
 
----
+### Step 1: Deploy Backend (e.g., Google Cloud Run)
+1. Authenticate with Google Cloud CLI (`gcloud auth login`).
+2. Build the Docker image (ensure you have a `Dockerfile` set up for Node.js):
+   ```bash
+   docker build -t gcr.io/virtual-promp-war/votepath-api .
+   ```
+3. Push to Container Registry:
+   ```bash
+   docker push gcr.io/virtual-promp-war/votepath-api
+   ```
+4. Deploy to Cloud Run, securely passing the required production environment variables:
+   ```bash
+   gcloud run deploy votepath-api \
+     --image gcr.io/virtual-promp-war/votepath-api \
+     --platform managed \
+     --region us-central1 \
+     --allow-unauthenticated \
+     --set-env-vars NODE_ENV=production,PORT=8080,GEMINI_API_KEY=...,MONGODB_URI=...
+   ```
+   *(Alternatively, you can manage environment variables securely in the GCP Console).*
 
-## Key Features
+### Step 2: Deploy Frontend (e.g., Vercel)
+1. Connect your GitHub repository to Vercel.
+2. Set the **Framework Preset** to `Vite`.
+3. Set the **Build Command** to `npm run build` and **Output Directory** to `dist`.
+4. In **Environment Variables**, add:
+   - `VITE_API_URL` = `https://your-cloud-run-backend-url.run.app`
+   - `VITE_GOOGLE_MAPS_API_KEY` = `your_key`
+5. Click **Deploy**.
 
-### 🗳️ Eligibility Checker
-Instant verification flow — enter Age, Citizenship, and Residency. Confetti animation on passing. Feeds into the Voter Readiness Score.
-
-### 🤖 AI Election Coach
-Conversational chatbot powered by Gemini 1.5 Flash with:
-- **Voice input** via Web Speech API (Hindi + English)
-- **Text-to-speech** responses
-- **Semantic FAQ matching** via Vertex AI Embeddings (RAG)
-- **Sentiment-aware tone** adjustment via Cloud NLP
-
-### 🎮 Gamified Voter Journey
-7-step interactive journey: **Register → Verify → Locate → Learn → Remind → Vote → Track**. Each step unlocks the next. Progress saved locally so it is never lost.
-
-### 📊 Voter Readiness Score
-Aggregates Eligibility Check + Quiz results into a 0–100 score displayed as an interactive Doughnut Chart. Scores of 80%+ generate a shareable **Certificate of Civic Excellence**.
-
-### 🗺️ Polling Booth Locator
-Google Maps integration that auto-detects the user's location and shows the nearest 3 booths with real-time accessibility info.
-
-### 📅 Smart Reminders
-State-aware election countdown timer with one-click Google Calendar sync and WhatsApp share link.
-
-### 🌐 22 Indian Languages
-Full support for all constitutionally scheduled languages including Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam, Odia, Punjabi, Assamese, Urdu, Sanskrit, Kashmiri, Sindhi, Nepali, Konkani, Manipuri, Bodo, Dogri, Maithili, and Santali.
-
-### 📱 Offline PWA
-Service Worker caches election FAQs, quiz data, and map tiles — the app works without an internet connection.
-
----
-
-## How to Run Locally
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/YOUR_USERNAME/matadata.git
-cd matadata
-
-# 2. Install dependencies
-npm install
-
-# 3. Start the development server
-npm run dev
-# App runs at http://localhost:5173
-
-# 4. (Optional) Run the full 200+ test suite
-npm run test
-
-# 5. (Optional) Build for production
-npm run build
-```
-
----
-
-## How It Works
-
-1. **User lands** on the homepage and selects their preferred language from 22 options.
-2. **Eligibility Check** verifies Age (18+), Indian Citizenship, and Residency. Result feeds the Readiness Score.
-3. **Voter Journey** unlocks a 7-step gamified path. Each completed step is saved in `localStorage`.
-4. **AI Coach** accepts text or voice queries. The query is:
-   - Analysed for sentiment (Cloud NLP)
-   - Matched against FAQ embeddings (Vertex AI)
-   - Answered by Gemini 1.5 Flash with tone adjusted to sentiment
-5. **Quiz** presents 10 civics questions. Score is posted to Google Sheets. A leaderboard is rendered from Sheets data.
-6. **Readiness Score** (0–100) is calculated and displayed. 80%+ generates a downloadable certificate.
-7. **Booth Locator** uses the browser's Geolocation API, queries Google Places, and renders results on a Google Map.
-8. **Reminder** detects the user's state, shows a countdown, and offers one-click Google Calendar sync.
-
----
-
-## Assumptions Made
-
-- The deployment environment supports **port `8080`** binding (required by Google Cloud Run).
-- For local development, `src/services/apiClient.ts` uses mocked responses for GCP APIs. Production routes these calls through secure backend Cloud Functions.
-- The user's browser supports the **Web Speech API** (`SpeechRecognition` + `window.speechSynthesis`) for voice features — available in Chrome and Edge.
-- The user grants **HTML5 Geolocation** permission for the Booth Locator and state-detection features.
-- Google Sheets is used as a lightweight leaderboard store; it is not intended as a production-grade database.
-
----
-
-## Technical Highlights
-
-| Metric | Value |
-|--------|-------|
-| Test cases | **200+ passing** (Vitest + React Testing Library) |
-| Accessibility | **WCAG 2.1 AAA** (aria-labels, keyboard nav, high-contrast, font-size controls) |
-| Languages | **22** Indian Scheduled Languages |
-| Bundle size | **< 500 KB** (gzipped, lazy-loaded routes) |
-| Deployment | Google Cloud Run via multi-stage Docker + Nginx |
-| CI/CD | GitHub Actions (test → build → deploy on push to `main`) |
-| Offline | PWA with Service Worker caching |
-
----
-
-## Project Structure
-
-```
-matadata/
-├── public/
-│   └── manifest.json          # PWA manifest
-├── src/
-│   ├── components/            # Reusable UI components
-│   ├── pages/                 # Route-level page components
-│   │   ├── HomePage.tsx
-│   │   ├── EligibilityPage.tsx
-│   │   ├── VoterJourneyPage.tsx
-│   │   ├── AICoachPage.tsx
-│   │   ├── BoothLocatorPage.tsx
-│   │   ├── QuizPage.tsx
-│   │   └── ReminderPage.tsx
-│   ├── services/              # Google Cloud API integrations
-│   │   ├── geminiService.ts
-│   │   ├── embeddingsService.ts
-│   │   ├── translationService.ts
-│   │   ├── mapsService.ts
-│   │   ├── calendarService.ts
-│   │   ├── nlpService.ts
-│   │   ├── authService.ts
-│   │   └── sheetsService.ts
-│   ├── i18n/                  # 22-language translation strings
-│   ├── pwa/                   # Service Worker for offline mode
-│   └── main.tsx
-├── Dockerfile                 # Multi-stage Docker build
-├── nginx.conf                 # Nginx config (gzip, caching, SPA routing)
-├── cloudbuild.yaml            # Google Cloud Build config
-└── .github/workflows/
-    └── deploy.yml             # GitHub Actions CI/CD pipeline
-```
-
----
-
-## Acknowledgements
-Built for the **Build with AI Hackathon** by Google Cloud India & Hack2skill.
-Democracy doesn't fail because people don't care — it struggles when people don't have access to clarity. MataData exists to fix that. 🇮🇳
+## 🧠 Assumptions
+- Users have a stable internet connection for real-time AI responses.
+- Election data structures in Google Sheets remain consistent with the backend parsers.
+- Localized language queries are supported by Gemini's base models without extensive fine-tuning.

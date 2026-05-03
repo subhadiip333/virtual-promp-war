@@ -1,91 +1,145 @@
 /**
- * apiClient.ts
- * 
- * This file serves as a wrapper to call our hypothetical backend API.
- * Currently, it intercepts requests and returns mock data to allow 
- * frontend development to proceed without a real backend.
+ * apiClient.ts — Production-grade HTTP client
+ *
+ * Features:
+ * - Zero mock data: all calls go to the real backend
+ * - Vite proxy handles CORS in dev (no hardcoded localhost URLs)
+ * - HMAC-SHA256 request signing for tamper protection
+ * - Automatic JWT auth header injection
+ * - Retry with exponential backoff (3 attempts)
+ * - Structured error typing
  */
 
-const IS_MOCK_MODE = true; // Set to false when connecting to a real backend
-
-export async function fetchFromBackend<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  if (IS_MOCK_MODE) {
-    return mockBackendResponse<T>(endpoint, options);
-  }
-
-  // Real backend call logic
-  try {
-    const response = await fetch(`http://localhost:8080${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error(`Error fetching from ${endpoint}:`, error);
-    throw error;
+// ── Types ────────────────────────────────────────────────────────────────────
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ApiError';
   }
 }
 
-// ----------------------------------------------------------------------
-// Mock Data Generators
-// ----------------------------------------------------------------------
+interface RequestOptions extends RequestInit {
+  /** Skip auth header for public endpoints */
+  skipAuth?: boolean;
+  /** Number of retry attempts on 5xx (default 2) */
+  retries?: number;
+}
 
-async function mockBackendResponse<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  // Simulate network latency
-  await new Promise(resolve => setTimeout(resolve, 800));
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-  console.log(`[MOCK BACKEND] Intercepted request to ${endpoint}`, options?.body ? JSON.parse(options.body as string) : '');
+/** HMAC-SHA256 using Web Crypto (browser-native, no dependency) */
+async function hmacSign(payload: string, secret: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(payload));
+  return Array.from(new Uint8Array(sig))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
-  if (endpoint.startsWith('/api/gemini/coach')) {
-    return {
-      reply: "Hello! I am your Election Coach powered by Gemini. Based on your query, here is what you need to know about voting in your constituency..."
-    } as unknown as T;
+function getAuthToken(): string | null {
+  return localStorage.getItem('vp_access_token');
+}
+
+async function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ── Core fetch function ──────────────────────────────────────────────────────
+
+/**
+ * Fetch from the backend API.
+ * In development, the Vite proxy rewrites /api/* → http://localhost:8080/api/*.
+ * In production, VITE_API_URL is the deployed base URL.
+ */
+export async function fetchFromBackend<T>(
+  endpoint: string,
+  options: RequestOptions = {},
+): Promise<T> {
+  const { skipAuth = false, retries = 2, ...fetchOptions } = options;
+
+  // Build the base URL: use relative path in dev (proxy handles it),
+  // use absolute URL in production builds.
+  const baseUrl =
+    import.meta.env.MODE === 'development'
+      ? ''
+      : (import.meta.env.VITE_API_URL ?? '');
+
+  const url = `${baseUrl}${endpoint}`;
+  const timestamp = Date.now().toString();
+  const body = fetchOptions.body as string | undefined;
+
+  // HMAC signing: sign "timestamp + endpoint + body" so backend can verify
+  // NOTE: HMAC secret is public client-side — this is TRANSPORT protection,
+  //       not secret auth. Real secret auth is the JWT.
+  const signature = await hmacSign(
+    `${timestamp}${endpoint}${body ?? ''}`,
+    'votepath-client-v1',
+  );
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Timestamp': timestamp,
+    'X-Signature': signature,
+    ...(fetchOptions.headers as Record<string, string>),
+  };
+
+  if (!skipAuth) {
+    const token = getAuthToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
   }
 
-  if (endpoint.startsWith('/api/embeddings')) {
-    return {
-      vector: [0.1, -0.4, 0.8, 0.05, -0.9] // dummy 5D vector
-    } as unknown as T;
+  let lastError: Error = new Error('Unknown error');
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url, {
+        ...fetchOptions,
+        headers,
+      });
+
+      // 401 → clear token and propagate
+      if (response.status === 401) {
+        localStorage.removeItem('vp_access_token');
+        throw new ApiError(401, 'UNAUTHORIZED', 'Session expired. Please sign in again.');
+      }
+
+      // 429 → rate limited
+      if (response.status === 429) {
+        throw new ApiError(429, 'RATE_LIMITED', 'Too many requests. Please slow down.');
+      }
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new ApiError(
+          response.status,
+          errBody.code ?? 'API_ERROR',
+          errBody.error ?? `Request failed: ${response.status}`,
+        );
+      }
+
+      return response.json() as Promise<T>;
+    } catch (err) {
+      lastError = err as Error;
+
+      // Don't retry client errors (4xx) or non-retriable errors
+      if (err instanceof ApiError && err.status < 500) throw err;
+
+      if (attempt < retries) {
+        await sleep(Math.pow(2, attempt) * 400); // 400ms, 800ms
+      }
+    }
   }
 
-  if (endpoint.startsWith('/api/translate')) {
-    const body = JSON.parse(options?.body as string || '{}');
-    return {
-      translatedText: `[Translated to ${body.targetLanguage}]: ${body.text}`
-    } as unknown as T;
-  }
-
-  if (endpoint.startsWith('/api/nlp/analyze')) {
-    return {
-      sentimentScore: 0.8,
-      entities: [
-        { name: "Election", type: "EVENT" },
-        { name: "Voting Booth", type: "LOCATION" }
-      ]
-    } as unknown as T;
-  }
-
-  if (endpoint.startsWith('/api/sheets/log')) {
-    return {
-      success: true,
-      rowUpdated: 42
-    } as unknown as T;
-  }
-  
-  if (endpoint.startsWith('/api/calendar/add-reminder')) {
-    return {
-      success: true,
-      eventId: "mock-event-id-12345"
-    } as unknown as T;
-  }
-
-  throw new Error(`Mock endpoint not found for ${endpoint}`);
+  throw lastError;
 }
