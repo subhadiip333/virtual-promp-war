@@ -32,11 +32,15 @@ if (process.env.NODE_ENV !== 'production') {
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 
 // ── Path resolution ──────────────────────────────────────────────────────────
-if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+import fs from 'fs';
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
   process.env.GOOGLE_APPLICATION_CREDENTIALS = path.resolve(
     process.env.GOOGLE_APPLICATION_CREDENTIALS,
   );
   console.log(`[Config] GCP credentials: ${process.env.GOOGLE_APPLICATION_CREDENTIALS}`);
+} else {
+  // In Cloud Run, it will fallback to the default service account automatically
+  delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
 }
 
 const __filename = fileURLToPath(import.meta.url);
