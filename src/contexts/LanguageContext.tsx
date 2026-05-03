@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { translationService } from '../services/translationService';
 
@@ -87,6 +88,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     fetchTranslation(text, currentLanguage);
 
     return text; // Return original while loading
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLanguage, translations]);
 
   const fetchTranslation = async (text: string, langCode: string) => {

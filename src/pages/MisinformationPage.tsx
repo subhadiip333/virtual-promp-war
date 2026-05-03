@@ -46,8 +46,8 @@ export default function MisinformationPage() {
         body: JSON.stringify({ claim: text }),
       });
       setResult(data);
-    } catch (err: any) {
-      setError(err.message ?? 'Fact-checking failed. Please try again.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Fact-checking failed. Please try again.');
     } finally {
       setLoading(false);
     }

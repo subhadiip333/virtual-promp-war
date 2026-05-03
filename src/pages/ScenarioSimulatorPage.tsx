@@ -43,8 +43,8 @@ export default function ScenarioSimulatorPage() {
         body: JSON.stringify({ scenario: text }),
       });
       setResult(data);
-    } catch (err: any) {
-      setError(err.message ?? 'Simulation failed. Please try again.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Simulation failed. Please try again.');
     } finally {
       setLoading(false);
     }

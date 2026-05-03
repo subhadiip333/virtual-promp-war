@@ -77,8 +77,8 @@ export default function CandidateComparePage() {
         body: JSON.stringify({ candidates: valid, state }),
       });
       setResult(data);
-    } catch (err: any) {
-      setError(err.message ?? 'Comparison failed. Please try again.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Comparison failed. Please try again.');
     } finally {
       setLoading(false);
     }

@@ -16,7 +16,6 @@ import { fileURLToPath } from 'url';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { body, validationResult } from 'express-validator';
 import { google } from 'googleapis';
 import { TranslationServiceClient } from '@google-cloud/translate';
 import dotenv from 'dotenv';
@@ -113,13 +112,20 @@ function verifyHmac(req: express.Request): boolean {
   const signature = req.headers['x-signature'] as string | undefined;
   if (!timestamp || !signature) return false;
 
-  // Reject requests older than 5 minutes (replay protection)
   if (Math.abs(Date.now() - Number(timestamp)) > 5 * 60 * 1000) return false;
 
   const payload = `${timestamp}${req.path}${req.body ? JSON.stringify(req.body) : ''}`;
-  const expected = crypto.createHmac('sha256', 'votepath-client-v1').update(payload).digest('hex');
+  const expected = crypto.createHmac('sha256', process.env.HMAC_SECRET ?? 'votepath-client-v1').update(payload).digest('hex');
   return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
 }
+
+const hmacMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (isDev) return next();
+  if (!verifyHmac(req)) {
+    return res.status(401).json({ error: 'Invalid HMAC signature' });
+  }
+  next();
+};
 
 // ── Middleware ───────────────────────────────────────────────────────────────
 app.use(helmet({
@@ -162,6 +168,11 @@ const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
   message: { error: 'AI query limit reached. Please wait a minute.' },
+});
+
+app.use('/api/', (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (req.method === 'POST') return hmacMiddleware(req, res, next);
+  next();
 });
 
 // ── Zod Schemas ──────────────────────────────────────────────────────────────
@@ -239,7 +250,7 @@ const ECI_RULES: Record<string, string> = {
   'pvt': 'NOTA (None of the Above) is the last option on your EVM. Press the blue button next to NOTA symbol.',
 };
 
-async function runAIPipeline(prompt: string, sessionId?: string): Promise<{ text: string; source: 'cache' | 'rules' | 'gemini' }> {
+async function runAIPipeline(prompt: string): Promise<{ text: string; source: 'cache' | 'rules' | 'gemini' }> {
   const cacheKey = `ai:${Buffer.from(prompt.toLowerCase().trim()).toString('base64').slice(0, 64)}`;
 
   // Layer 1: Redis cache
@@ -297,10 +308,10 @@ app.post('/api/gemini/coach', aiLimiter, async (req, res) => {
 
   try {
     auditLog('AI_COACH_QUERY', { sessionId, lang: language }, req);
-    const { text, source } = await runAIPipeline(prompt, sessionId);
+    const { text, source } = await runAIPipeline(prompt);
     return res.json({ reply: text, source, model: 'gemini-2.5-flash' });
-  } catch (err: any) {
-    console.error('[Coach] Error:', err.message);
+  } catch (err: unknown) {
+    console.error('[Coach] Error:', (err instanceof Error ? err.message : String(err)));
     return res.status(500).json({ error: 'AI service temporarily unavailable. Please try again.' });
   }
 });
@@ -348,8 +359,8 @@ Base your analysis strictly on ECI rules and established facts. Do not fabricate
     await redisSet(cacheKey, JSON.stringify(result), 7200);
     auditLog('MISINFO_CHECK', { claim: claim.slice(0, 100), verdict: result.verdict }, req);
     return res.json(result);
-  } catch (err: any) {
-    console.error('[Misinfo] Error:', err.message);
+  } catch (err: unknown) {
+    console.error('[Misinfo] Error:', (err instanceof Error ? err.message : String(err)));
     return res.status(500).json({ error: 'Fact-checking service unavailable.' });
   }
 });
@@ -395,8 +406,8 @@ Be strictly factual. If you cannot verify a candidate's details, state "Informat
     const result = JSON.parse(jsonMatch[0]);
     await redisSet(cacheKey, JSON.stringify(result), 3600);
     return res.json(result);
-  } catch (err: any) {
-    console.error('[Compare] Error:', err.message);
+  } catch (err: unknown) {
+    console.error('[Compare] Error:', (err instanceof Error ? err.message : String(err)));
     return res.status(500).json({ error: 'Comparison service unavailable.' });
   }
 });
@@ -433,8 +444,8 @@ Respond ONLY with valid JSON:
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('Invalid AI response format');
     return res.json(JSON.parse(jsonMatch[0]));
-  } catch (err: any) {
-    console.error('[Scenario] Error:', err.message);
+  } catch (err: unknown) {
+    console.error('[Scenario] Error:', (err instanceof Error ? err.message : String(err)));
     return res.status(500).json({ error: 'Scenario simulation unavailable.' });
   }
 });
@@ -455,7 +466,7 @@ app.post('/api/translate', async (req, res) => {
   try {
     const translateClient = getTranslateClient();
     const [response] = await translateClient.translateText({
-      parent: `projects/${project}/locations/global`,
+      parent: `projects/${project}/locations/${location}`,
       contents: [text],
       mimeType: 'text/plain',
       targetLanguageCode: targetLanguage,
@@ -463,8 +474,8 @@ app.post('/api/translate', async (req, res) => {
     const translatedText = response.translations?.[0].translatedText ?? '';
     await redisSet(cacheKey, translatedText, 86400);
     return res.json({ translatedText, source: 'live' });
-  } catch (err: any) {
-    console.error('[Translate] Error:', err.message);
+  } catch (err: unknown) {
+    console.error('[Translate] Error:', (err instanceof Error ? err.message : String(err)));
     return res.status(500).json({ error: 'Translation service unavailable.' });
   }
 });
@@ -490,8 +501,8 @@ app.post('/api/nlp/analyze', async (req, res) => {
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('Bad response');
     return res.json(JSON.parse(jsonMatch[0]));
-  } catch (err: any) {
-    console.error('[NLP] Error:', err.message);
+  } catch (err: unknown) {
+    console.error('[NLP] Error:', (err instanceof Error ? err.message : String(err)));
     return res.status(500).json({ error: 'NLP analysis unavailable.' });
   }
 });
@@ -524,8 +535,8 @@ app.post('/api/sheets/log', async (req, res) => {
 
     auditLog('QUIZ_LOGGED', { userId, quizId, score }, req);
     return res.json({ success: true });
-  } catch (err: any) {
-    console.error('[Sheets] Error:', err.message);
+  } catch (err: unknown) {
+    console.error('[Sheets] Error:', (err instanceof Error ? err.message : String(err)));
     return res.status(500).json({ error: 'Failed to log quiz score.' });
   }
 });
@@ -557,17 +568,18 @@ app.post('/api/calendar/add-reminder', async (req, res) => {
     });
 
     return res.json({ success: true, eventId: event.data.id });
-  } catch (err: any) {
-    console.error('[Calendar] Error:', err.message);
+  } catch (err: unknown) {
+    console.error('[Calendar] Error:', (err instanceof Error ? err.message : String(err)));
     return res.status(500).json({ error: 'Failed to create calendar event.' });
   }
 });
 
 // ── Global error handler ─────────────────────────────────────────────────────
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('[Unhandled]', err);
   res.status(500).json({
-    error: isDev ? err.message : 'An internal error occurred.',
+    error: isDev ? (err instanceof Error ? err.message : String(err)) : 'An internal error occurred.',
   });
 });
 

@@ -74,7 +74,6 @@ export default function BoothLocatorPage() {
 
   useEffect(() => {
     locateAndLoad();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Map centre

@@ -21,7 +21,7 @@ HTMLCanvasElement.prototype.getContext = () => ({
   setTransform: vi.fn(),
   transform: vi.fn(),
   resetTransform: vi.fn(),
-} as any);
+} as unknown as CanvasRenderingContext2D);
 
 // Mock react-confetti
 vi.mock('react-confetti', () => ({
@@ -48,12 +48,15 @@ Object.defineProperty(window, 'matchMedia', {
 
 vi.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, whileHover, initial, animate, exit, transition, ...props }: any) =>
-      React.createElement('div', props, children),
-    span: ({ children, whileHover, initial, animate, exit, transition, ...props }: any) =>
-      React.createElement('span', props, children),
-    p: ({ children, whileHover, initial, animate, exit, transition, ...props }: any) =>
-      React.createElement('p', props, children),
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    div: ({ children, whileHover: _whileHover, initial: _initial, animate: _animate, exit: _exit, transition: _transition, ...props }: Record<string, unknown>) =>
+      React.createElement('div', props, children as React.ReactNode),
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    span: ({ children, whileHover: _whileHover, initial: _initial, animate: _animate, exit: _exit, transition: _transition, ...props }: Record<string, unknown>) =>
+      React.createElement('span', props, children as React.ReactNode),
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    p: ({ children, whileHover: _whileHover, initial: _initial, animate: _animate, exit: _exit, transition: _transition, ...props }: Record<string, unknown>) =>
+      React.createElement('p', props, children as React.ReactNode),
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) =>
     React.createElement(React.Fragment, null, children),
@@ -64,9 +67,9 @@ class MockSpeechRecognition {
   start = vi.fn();
   stop = vi.fn();
 }
-// @ts-ignore
+// @ts-expect-error Mocking global
 window.SpeechRecognition = MockSpeechRecognition;
-// @ts-ignore
+// @ts-expect-error Mocking global
 window.webkitSpeechRecognition = MockSpeechRecognition;
 
 // Mock speechSynthesis
@@ -79,7 +82,7 @@ Object.defineProperty(window, 'speechSynthesis', {
 });
 
 // Mock SpeechSynthesisUtterance
-// @ts-ignore
+// @ts-expect-error Mocking global
 window.SpeechSynthesisUtterance = vi.fn().mockImplementation((text) => ({ text }));
 
 // Mock navigator.geolocation

@@ -52,7 +52,7 @@ export default function AICoachPage() {
       const botMsg: Message = { id: (Date.now() + 1).toString(), text: response.reply, sender: 'bot' };
       setMessages(prev => [...prev, botMsg]);
       speakText(response.reply);
-    } catch (error) {
+    } catch {
       const errMsg = "Sorry, I'm having trouble connecting to my database right now.";
       const errorMsg: Message = { id: (Date.now() + 1).toString(), text: errMsg, sender: 'bot' };
       setMessages(prev => [...prev, errorMsg]);
@@ -74,14 +74,15 @@ export default function AICoachPage() {
     }
 
     setIsListening(true);
-    // @ts-ignore
+    // @ts-expect-error browser specific api
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = language;
     recognition.interimResults = false;
     
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
+    recognition.onresult = (event: unknown) => {
+      const e = event as { results: { transcript: string }[][] };
+      const transcript = e.results[0][0].transcript;
       setInput(transcript);
       setIsListening(false);
     };

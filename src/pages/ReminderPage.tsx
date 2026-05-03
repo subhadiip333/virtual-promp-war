@@ -13,7 +13,7 @@ const getStateFromCoords = async (lat: number, lng: number): Promise<string | nu
     );
     const data = await res.json();
 
-    const stateComp = data.results?.[0]?.address_components?.find((c: any) =>
+    const stateComp = data.results?.[0]?.address_components?.find((c: { types: string[] }) =>
       c.types.includes("administrative_area_level_1")
     );
 
