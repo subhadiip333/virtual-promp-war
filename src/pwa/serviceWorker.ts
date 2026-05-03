@@ -8,16 +8,18 @@ const STATIC_ASSETS = [
   '/vite.svg',
 ];
 
-self.addEventListener('install', (event: ExtendableEvent) => {
+const sw = self as unknown as ServiceWorkerGlobalScope;
+
+sw.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS);
     })
   );
-  (self as unknown as ServiceWorkerGlobalScope).skipWaiting();
+  sw.skipWaiting();
 });
 
-self.addEventListener('activate', (event: ExtendableEvent) => {
+sw.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -29,10 +31,10 @@ self.addEventListener('activate', (event: ExtendableEvent) => {
       );
     })
   );
-  (self as unknown as ServiceWorkerGlobalScope).clients.claim();
+  sw.clients.claim();
 });
 
-self.addEventListener('fetch', (event: FetchEvent) => {
+sw.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
 
   // Cache first for static assets and maps tiles (if they were directly loaded)
@@ -62,7 +64,7 @@ self.addEventListener('fetch', (event: FetchEvent) => {
           return response;
         })
         .catch(() => {
-          return caches.match(event.request);
+          return caches.match(event.request).then(res => res || new Response('', { status: 503 }));
         })
     );
     return;
@@ -70,6 +72,6 @@ self.addEventListener('fetch', (event: FetchEvent) => {
 
   // Default: Network First, fallback to cache
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    fetch(event.request).catch(() => caches.match(event.request).then(res => res || new Response('', { status: 503 })))
   );
 });
