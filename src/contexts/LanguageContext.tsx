@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { translationService } from '../services/translationService';
 
 /**
@@ -47,7 +47,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentLanguage, setCurrentLanguage] = useState<string>(() => {
     return localStorage.getItem('selectedLanguageCode') || 'en';
   });
-  
+
   const [isTranslating, setIsTranslating] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
 
@@ -72,10 +72,10 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (currentLanguage === 'en' || !text.trim()) return text;
 
     const cacheKey = `${currentLanguage}:${text}`;
-    
+
     // Return from state if already loaded in this render cycle
     if (translations[cacheKey]) return translations[cacheKey];
-    
+
     // Check static cache
     if (translationCache.has(cacheKey)) {
       return translationCache.get(cacheKey)!;
@@ -85,7 +85,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Note: This is a "reactive" translation approach.
     // The first render will show English, then update to translated text.
     fetchTranslation(text, currentLanguage);
-    
+
     return text; // Return original while loading
   }, [currentLanguage, translations]);
 
