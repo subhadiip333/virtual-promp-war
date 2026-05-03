@@ -1,18 +1,20 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
-
-# Declare the build argument
 ARG VITE_GOOGLE_MAPS_API_KEY
-# Expose it as env var so Vite can read it during build
 ENV VITE_GOOGLE_MAPS_API_KEY=$VITE_GOOGLE_MAPS_API_KEY
-
 COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM nginx:alpine AS server
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+FROM node:20-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=builder /app/package*.json ./
+RUN npm ci --only=production
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server ./server
+COPY --from=builder /app/service-account.json ./service-account.json
+
 EXPOSE 8080
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["npx", "tsx", "server/index.ts"]

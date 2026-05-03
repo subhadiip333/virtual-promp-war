@@ -24,7 +24,9 @@ import crypto from 'crypto';
 import { z } from 'zod';
 import { GoogleGenAI } from '@google/genai';
 
-dotenv.config({ override: true });
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 // Ensure NODE_ENV has a default
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
@@ -38,16 +40,16 @@ if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
 }
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
-const isDev      = process.env.NODE_ENV !== 'production';
+const __dirname = path.dirname(__filename);
+const isDev = process.env.NODE_ENV !== 'production';
 
 // ── Express app ──────────────────────────────────────────────────────────────
-const app  = express();
+const app = express();
 export { app };
 const port = Number(process.env.PORT ?? 8080);
 
 // ── Upstash Redis (REST API — no native driver needed) ───────────────────────
-const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL!;
+const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL!;
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN!;
 
 async function redisGet(key: string): Promise<string | null> {
@@ -83,18 +85,18 @@ async function callGemini(prompt: string, systemInstruction: string, temperature
 }
 
 // ── Google Cloud Translate ───────────────────────────────────────────────────
-const project  = process.env.GOOGLE_CLOUD_PROJECT ?? 'virtual-promp-war';
+const project = process.env.GOOGLE_CLOUD_PROJECT ?? 'virtual-promp-war';
 const location = process.env.GOOGLE_CLOUD_LOCATION ?? 'us-central1';
 const getTranslateClient = () => new TranslationServiceClient();
 
 // ── Audit Logger ─────────────────────────────────────────────────────────────
 function auditLog(event: string, data: Record<string, unknown>, req: express.Request) {
   const entry = {
-    ts:     new Date().toISOString(),
+    ts: new Date().toISOString(),
     event,
-    ip:     req.ip,
-    ua:     req.headers['user-agent'],
-    path:   req.path,
+    ip: req.ip,
+    ua: req.headers['user-agent'],
+    path: req.path,
     ...data,
   };
   // In production pipe to Cloud Logging / structured stderr
@@ -110,7 +112,7 @@ function verifyHmac(req: express.Request): boolean {
   // Reject requests older than 5 minutes (replay protection)
   if (Math.abs(Date.now() - Number(timestamp)) > 5 * 60 * 1000) return false;
 
-  const payload  = `${timestamp}${req.path}${req.body ? JSON.stringify(req.body) : ''}`;
+  const payload = `${timestamp}${req.path}${req.body ? JSON.stringify(req.body) : ''}`;
   const expected = crypto.createHmac('sha256', 'votepath-client-v1').update(payload).digest('hex');
   return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
 }
@@ -119,14 +121,14 @@ function verifyHmac(req: express.Request): boolean {
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc:  ["'self'"],
-      scriptSrc:   ["'self'", "'unsafe-inline'", 'https://maps.googleapis.com'],
-      styleSrc:    ["'self'", "'unsafe-inline'"],
-      imgSrc:      ["'self'", 'data:', 'https:'],
-      connectSrc:  ["'self'", 'https://*.googleapis.com', 'https://*.upstash.io'],
-      fontSrc:     ["'self'", 'https://fonts.gstatic.com'],
-      frameSrc:    ["'none'"],
-      objectSrc:   ["'none'"],
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://maps.googleapis.com'],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'", 'https://*.googleapis.com', 'https://*.upstash.io'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
     },
   },
   crossOriginEmbedderPolicy: false,
@@ -145,44 +147,44 @@ app.use(express.json({ limit: '10kb' })); // Prevent large payload DoS
 // Global rate limiter
 app.use('/api/', rateLimit({
   windowMs: 15 * 60 * 1000,
-  max:      100,
+  max: 100,
   standardHeaders: true,
-  legacyHeaders:   false,
+  legacyHeaders: false,
   message: { error: 'Too many requests. Please try again in 15 minutes.' },
 }));
 
 // Tighter limiter for AI endpoints (expensive calls)
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max:      20,
+  max: 20,
   message: { error: 'AI query limit reached. Please wait a minute.' },
 });
 
 // ── Zod Schemas ──────────────────────────────────────────────────────────────
 const CoachSchema = z.object({
-  prompt:      z.string().min(1).max(1000).trim(),
-  language:    z.string().optional().default('en'),
-  sessionId:   z.string().uuid().optional(),
+  prompt: z.string().min(1).max(1000).trim(),
+  language: z.string().optional().default('en'),
+  sessionId: z.string().uuid().optional(),
 });
 
 const TranslateSchema = z.object({
-  text:           z.string().min(1).max(5000),
+  text: z.string().min(1).max(5000),
   targetLanguage: z.string().min(2).max(5),
 });
 
 const SheetsLogSchema = z.object({
-  userId:  z.string().min(1).max(128),
-  quizId:  z.string().min(1).max(128),
-  score:   z.number().int().min(0).max(100),
+  userId: z.string().min(1).max(128),
+  quizId: z.string().min(1).max(128),
+  score: z.number().int().min(0).max(100),
   timestamp: z.string().datetime().optional(),
 });
 
 const CalendarSchema = z.object({
-  summary:       z.string().min(1).max(256),
-  description:   z.string().max(1000).optional(),
-  location:      z.string().max(256).optional(),
+  summary: z.string().min(1).max(256),
+  description: z.string().max(1000).optional(),
+  location: z.string().max(256).optional(),
   startDateTime: z.string().datetime(),
-  endDateTime:   z.string().datetime(),
+  endDateTime: z.string().datetime(),
 });
 
 const MisinfoSchema = z.object({
@@ -191,7 +193,7 @@ const MisinfoSchema = z.object({
 
 const CandidateCompareSchema = z.object({
   candidates: z.array(z.string().min(1).max(128)).min(2).max(4),
-  state:      z.string().min(2).max(64),
+  state: z.string().min(2).max(64),
 });
 
 const ScenarioSchema = z.object({
@@ -226,11 +228,11 @@ function isPromptSafe(text: string): boolean {
 // AI PIPELINE: Cache → Rules Engine → Gemini
 // ────────────────────────────────────────────────────────────────────────────
 const ECI_RULES: Record<string, string> = {
-  'voter id':     'Voter ID (EPIC) is issued by the Election Commission of India. You can apply online at voters.eci.gov.in or through Form 6.',
-  'age':          'You must be at least 18 years old as of January 1st of the election year to vote in India.',
-  'booth':        'Your polling booth is assigned based on your registered address. Find it at electoralsearch.eci.gov.in.',
+  'voter id': 'Voter ID (EPIC) is issued by the Election Commission of India. You can apply online at voters.eci.gov.in or through Form 6.',
+  'age': 'You must be at least 18 years old as of January 1st of the election year to vote in India.',
+  'booth': 'Your polling booth is assigned based on your registered address. Find it at electoralsearch.eci.gov.in.',
   'invalid vote': 'A vote is invalid if the mark is outside the ballot area, or multiple candidates are marked.',
-  'pvt':         'NOTA (None of the Above) is the last option on your EVM. Press the blue button next to NOTA symbol.',
+  'pvt': 'NOTA (None of the Above) is the last option on your EVM. Press the blue button next to NOTA symbol.',
 };
 
 async function runAIPipeline(prompt: string, sessionId?: string): Promise<{ text: string; source: 'cache' | 'rules' | 'gemini' }> {
@@ -449,9 +451,9 @@ app.post('/api/translate', async (req, res) => {
   try {
     const translateClient = getTranslateClient();
     const [response] = await translateClient.translateText({
-      parent:             `projects/${project}/locations/global`,
-      contents:           [text],
-      mimeType:           'text/plain',
+      parent: `projects/${project}/locations/global`,
+      contents: [text],
+      mimeType: 'text/plain',
       targetLanguageCode: targetLanguage,
     });
     const translatedText = response.translations?.[0].translatedText ?? '';
@@ -509,7 +511,7 @@ app.post('/api/sheets/log', async (req, res) => {
     const { userId, quizId, score, timestamp } = data!;
     await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range:            'Sheet1!A:E',
+      range: 'Sheet1!A:E',
       valueInputOption: 'RAW',
       requestBody: {
         values: [[userId, quizId, score, timestamp ?? new Date().toISOString(), 'VotePathX']],
@@ -546,7 +548,7 @@ app.post('/api/calendar/add-reminder', async (req, res) => {
         description,
         location,
         start: { dateTime: startDateTime, timeZone: 'Asia/Kolkata' },
-        end:   { dateTime: endDateTime,   timeZone: 'Asia/Kolkata' },
+        end: { dateTime: endDateTime, timeZone: 'Asia/Kolkata' },
       },
     });
 
